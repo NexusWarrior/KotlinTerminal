@@ -1,3 +1,9 @@
+package tests
+
+import COMMAND_LIST
+import executeCommand
+import getWelcomeMessage
+import parseUserInput
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import kotlin.test.Test
@@ -7,13 +13,18 @@ import kotlin.test.assertTrue
 
 class MainTest {
 
-    // parseUserInput()
+    /**
+     * Проверяет обработку пустой строки и строки, содержащей только пробелы.
+     */
     @Test
     fun `should return empty list for blank input`() {
         assertTrue(parseUserInput("").isEmpty())
         assertTrue(parseUserInput("   ").isEmpty())
     }
 
+    /**
+     * Проверяет разделение команды и аргумента по пробелу.
+     */
     @Test
     fun `should split input by whitespace`() {
         val result = parseUserInput("ls file.txt")
@@ -24,6 +35,9 @@ class MainTest {
         )
     }
 
+    /**
+     * Проверяет удаление пробелов в начале и конце входной строки.
+     */
     @Test
     fun `should trim input before parsing`() {
         val result = parseUserInput("   ls   file.txt   ")
@@ -34,6 +48,9 @@ class MainTest {
         )
     }
 
+    /**
+     * Проверяет обработку команды с несколькими аргументами.
+     */
     @Test
     fun `should parse multiple arguments`() {
         val result = parseUserInput("ls -la /Users/test")
@@ -44,6 +61,9 @@ class MainTest {
         )
     }
 
+    /**
+     * Проверяет разделение аргументов при использовании табуляции и нескольких пробелов.
+     */
     @Test
     fun `should split input with tabs and multiple spaces`() {
         val result = parseUserInput("ls\t\t-la    file.txt")
@@ -54,6 +74,9 @@ class MainTest {
         )
     }
 
+    /**
+     * Проверяет сохранение обычных аргументов без специальных символов.
+     */
     @Test
     fun `should preserve normal arguments`() {
         val result = parseUserInput("cd /Users/andrew")
@@ -64,12 +87,15 @@ class MainTest {
         )
     }
 
+    /**
+     * Проверяет замену существующей переменной окружения.
+     */
     @Test
     fun `should replace existing environment variable`() {
         val home = System.getenv("HOME")
 
         if (home != null) {
-            val result = parseUserInput("\$HOME")
+            val result = parseUserInput($$"$HOME")
 
             assertEquals(
                 listOf(home),
@@ -78,12 +104,15 @@ class MainTest {
         }
     }
 
+    /**
+     * Проверяет замену переменной окружения внутри списка аргументов.
+     */
     @Test
     fun `should replace environment variable inside multiple arguments`() {
         val home = System.getenv("HOME")
 
         if (home != null) {
-            val result = parseUserInput("cd \$HOME")
+            val result = parseUserInput($$"cd $HOME")
 
             assertEquals(
                 listOf("cd", home),
@@ -92,26 +121,34 @@ class MainTest {
         }
     }
 
+    /**
+     * Проверяет удаление символа '$' после успешной замены переменной окружения.
+     */
     @Test
     fun `should remove dollar sign before environment variable name`() {
         val home = System.getenv("HOME")
 
         if (home != null) {
-            val result = parseUserInput("\$HOME")
+            val result = parseUserInput($$"$HOME")
 
-            assertTrue(result.first() != "\$HOME")
+            assertTrue(result.first() != $$"$HOME")
             assertEquals(home, result.first())
         }
     }
 
+    /**
+     * Проверяет обработку неизвестной переменной окружения.
+     */
     @Test
     fun `should ignore unknown environment variable`() {
-        val result = parseUserInput("\$VARIABLE_THAT_DOES_NOT_EXIST")
+        val result = parseUserInput($$"$VARIABLE_THAT_DOES_NOT_EXIST")
 
         assertTrue(result.isEmpty())
     }
 
-    // getWelcomeMessage()
+    /**
+     * Проверяет наличие имени текущего пользователя в приветственном сообщении.
+     */
     @Test
     fun `should contain current username in welcome message`() {
         val username = System.getProperty("user.name")
@@ -121,6 +158,9 @@ class MainTest {
         assertContains(result, username)
     }
 
+    /**
+     * Проверяет формат окончания строки приглашения терминала.
+     */
     @Test
     fun `should contain terminal prompt`() {
         val result = getWelcomeMessage()
@@ -128,7 +168,9 @@ class MainTest {
         assertTrue(result.endsWith(":~$ "))
     }
 
-    // COMMAND_LIST
+    /**
+     * Проверяет наличие всех поддерживаемых команд.
+     */
     @Test
     fun `should contain all supported commands`() {
         assertEquals(
@@ -137,7 +179,9 @@ class MainTest {
         )
     }
 
-    // executeCommand()
+    /**
+     * Проверяет сообщение об ошибке для неизвестной команды.
+     */
     @Test
     fun `should print unknown command message`() {
         val output = captureOutput {
@@ -150,6 +194,9 @@ class MainTest {
         )
     }
 
+    /**
+     * Проверяет сообщение об ошибке при отсутствии аргументов.
+     */
     @Test
     fun `should print invalid arguments message`() {
         val output = captureOutput {
@@ -162,6 +209,9 @@ class MainTest {
         )
     }
 
+    /**
+     * Проверяет вывод команды и переданных аргументов.
+     */
     @Test
     fun `should print command and arguments`() {
         val output = captureOutput {
@@ -177,7 +227,9 @@ class MainTest {
         )
     }
 
-    // Test utilities
+    /**
+     * Перехватывает вывод в стандартный поток для проверки результата функции.
+     */
     private fun captureOutput(block: () -> Unit): String {
         val output = ByteArrayOutputStream()
         val originalOut = System.out
