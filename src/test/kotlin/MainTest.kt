@@ -1,9 +1,3 @@
-package tests
-
-import COMMAND_LIST
-import executeCommand
-import getWelcomeMessage
-import parseUserInput
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import kotlin.test.Test
