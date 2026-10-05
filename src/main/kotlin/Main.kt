@@ -260,25 +260,37 @@ fun executeStartupScript(scriptPath: String): Boolean {
 }
 
 /**
- * Запускает эмулятор терминала.
+ * Выводит конфигурацию эмулятора.
  *
- * @param args параметры командной строки.
+ * @param config конфигурация эмулятора.
  */
-fun main(args: Array<String>) {
-    val config = parseCommandLineArguments(args)
-
+fun printConfiguration(config: AppConfig) {
     println("Конфигурация эмулятора:")
     println("vfs=${config.vfsPath ?: "не задан"}")
     println("script=${config.scriptPath ?: "не задан"}")
+}
 
-    if (config.scriptPath != null) {
-        val scriptSucceeded = executeStartupScript(config.scriptPath)
-
-        if (!scriptSucceeded) {
-            println("Стартовый скрипт завершён с ошибками.")
-        }
+/**
+ * Выполняет стартовый скрипт, если он указан в конфигурации.
+ *
+ * @param scriptPath путь к стартовому скрипту.
+ */
+fun runStartupScriptIfConfigured(scriptPath: String?) {
+    if (scriptPath == null) {
+        return
     }
 
+    val scriptSucceeded = executeStartupScript(scriptPath)
+
+    if (!scriptSucceeded) {
+        println("Стартовый скрипт завершён с ошибками.")
+    }
+}
+
+/**
+ * Запускает интерактивный режим терминала.
+ */
+fun runInteractiveMode() {
     while (true) {
         print(getWelcomeMessage())
 
@@ -288,4 +300,17 @@ fun main(args: Array<String>) {
             break
         }
     }
+}
+
+/**
+ * Запускает эмулятор терминала.
+ *
+ * @param args параметры командной строки.
+ */
+fun main(args: Array<String>) {
+    val config = parseCommandLineArguments(args)
+
+    printConfiguration(config)
+    runStartupScriptIfConfigured(config.scriptPath)
+    runInteractiveMode()
 }
