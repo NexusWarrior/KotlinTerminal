@@ -184,7 +184,7 @@ class MainTest {
         }
 
         assertEquals(
-            "неизвестная команда\n",
+            "неизвестная команда: unknown\n",
             output,
         )
     }
@@ -217,7 +217,11 @@ class MainTest {
         }
 
         assertEquals(
-            "ls: [-la, /Users/test]\n",
+            """
+                ls
+                -la
+                /Users/test
+                """.trimIndent() + "\n",
             output,
         )
     }
