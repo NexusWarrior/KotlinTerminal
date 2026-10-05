@@ -135,6 +135,28 @@ fun executeCommand(
     }
 
 /**
+ * Проверяет наличие значения у параметра командной строки.
+ *
+ * @param args аргументы командной строки.
+ * @param index индекс параметра.
+ * @param argument имя параметра.
+ * @throws IllegalArgumentException если значение отсутствует.
+ */
+fun requireArgumentValue(
+    args: Array<String>,
+    index: Int,
+    argument: String,
+): String {
+    if (index + 1 >= args.size) {
+        throw IllegalArgumentException(
+            "для параметра $argument не указано значение",
+        )
+    }
+
+    return args[index + 1]
+}
+
+/**
  * Разбирает параметры командной строки.
  *
  * Поддерживаемые параметры:
@@ -149,30 +171,17 @@ fun executeCommand(
 fun parseCommandLineArguments(args: Array<String>): AppConfig {
     var vfsPath: String? = null
     var scriptPath: String? = null
-
     var index = 0
 
     while (index < args.size) {
         when (args[index]) {
             VFS_ARGUMENT -> {
-                if (index + 1 >= args.size) {
-                    throw IllegalArgumentException(
-                        "для параметра $VFS_ARGUMENT не указано значение",
-                    )
-                }
-
-                vfsPath = args[index + 1]
+                vfsPath = requireArgumentValue(args, index, VFS_ARGUMENT)
                 index += 2
             }
 
             SCRIPT_ARGUMENT -> {
-                if (index + 1 >= args.size) {
-                    throw IllegalArgumentException(
-                        "для параметра $SCRIPT_ARGUMENT не указано значение",
-                    )
-                }
-
-                scriptPath = args[index + 1]
+                scriptPath = requireArgumentValue(args, index, SCRIPT_ARGUMENT)
                 index += 2
             }
 
