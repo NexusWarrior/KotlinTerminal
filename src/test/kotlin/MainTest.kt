@@ -3,6 +3,7 @@ import java.io.PrintStream
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class MainTest {
@@ -219,6 +220,121 @@ class MainTest {
             "ls: [-la, /Users/test]\n",
             output,
         )
+    }
+
+    /**
+     * Проверяет разбор параметра VFS.
+     */
+    @Test
+    fun `should parse vfs argument`() {
+        val config = parseCommandLineArguments(
+            arrayOf("--vfs", "data/vfs"),
+        )
+
+        assertEquals("data/vfs", config.vfsPath)
+        assertEquals(null, config.scriptPath)
+    }
+
+    /**
+     * Проверяет разбор параметра стартового скрипта.
+     */
+    @Test
+    fun `should parse script argument`() {
+        val config = parseCommandLineArguments(
+            arrayOf("--script", "scripts/startup.txt"),
+        )
+
+        assertEquals(null, config.vfsPath)
+        assertEquals("scripts/startup.txt", config.scriptPath)
+    }
+
+    /**
+     * Проверяет разбор обоих параметров.
+     */
+    @Test
+    fun `should parse both arguments`() {
+        val config = parseCommandLineArguments(
+            arrayOf(
+                "--vfs",
+                "data/vfs",
+                "--script",
+                "scripts/startup.txt",
+            ),
+        )
+
+        assertEquals("data/vfs", config.vfsPath)
+        assertEquals("scripts/startup.txt", config.scriptPath)
+    }
+
+    /**
+     * Проверяет выполнение команд стартового скрипта
+     * и игнорирование комментариев.
+     */
+    @Test
+    fun `should execute commands from startup script and ignore comments`() {
+        val script = kotlin.io.path.createTempFile(
+            prefix = "startup",
+            suffix = ".txt",
+        )
+
+        script.toFile().writeText(
+            """
+        // Комментарий
+        cd test
+
+        // Ещё один комментарий
+        cd another
+        """.trimIndent(),
+        )
+
+        val output = captureOutput {
+            executeStartupScript(script.toString())
+        }
+
+        assertTrue(output.contains("cd: [test]"))
+        assertTrue(output.contains("cd: [another]"))
+
+        assertFalse(output.contains("Комментарий"))
+        assertFalse(output.contains("Ещё один комментарий"))
+
+        script.toFile().delete()
+    }
+
+    /**
+     * Проверяет сообщение об ошибке при выполнении
+     * некорректной команды в стартовом скрипте.
+     */
+    @Test
+    fun `should report error during startup script execution`() {
+        val script = kotlin.io.path.createTempFile(
+            prefix = "startup",
+            suffix = ".txt",
+        )
+
+        script.toFile().writeText(
+            """
+        unknown
+        cd test
+        """.trimIndent(),
+        )
+
+        var result = true
+
+        val output = captureOutput {
+            result = executeStartupScript(script.toString())
+        }
+
+        assertFalse(result)
+
+        assertTrue(
+            output.contains(
+                "Ошибка выполнения стартового скрипта: unknown",
+            ),
+        )
+
+        assertTrue(output.contains("cd: [test]"))
+
+        script.toFile().delete()
     }
 
     /**

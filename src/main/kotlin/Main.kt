@@ -5,29 +5,34 @@
  */
 val COMMAND_LIST = listOf("ls", "cd", "exit")
 
-fun main() {
-    while (true) {
-        print(getWelcomeMessage())
-        val input = readlnOrNull() ?: break
+/**
+ * Параметр командной строки для указания пути к VFS.
+ */
+const val VFS_ARGUMENT = "--vfs"
 
-        val parseInput = parseUserInput(input)
-        if (parseInput.isEmpty()) continue
+/**
+ * Параметр командной строки для указания пути к стартовому скрипту.
+ */
+const val SCRIPT_ARGUMENT = "--script"
 
-        val cmd = parseInput.first()
-        val cmdArgs = parseInput.subList(1, parseInput.size)
+/**
+ * Хранит конфигурацию эмулятора.
+ *
+ * @property vfsPath путь к физическому расположению VFS.
+ * @property scriptPath путь к стартовому скрипту.
+ */
+data class AppConfig(
+    val vfsPath: String?,
+    val scriptPath: String?,
+)
 
-        if (cmd == "exit") {
-            if (cmdArgs.isEmpty()) {
-                println("Завершение работы терминала")
-                break
-            } else {
-                println("неверные аргументы")
-            }
-            continue
-        }
-
-        executeCommand(cmd, cmdArgs)
-    }
+/**
+ * Результат выполнения команды терминала.
+ */
+enum class CommandResult {
+    SUCCESS,
+    ERROR,
+    EXIT,
 }
 
 /**
@@ -91,28 +96,196 @@ fun parseUserInput(line: String): List<String> {
 }
 
 /**
- * Выполняет указанную команду с переданными аргументами.
+ * Выполняет команду терминала.
  *
- * Если команда отсутствует в [COMMAND_LIST], выводится сообщение
- * о неизвестной команде.
- *
- * Если команда известна, но аргументы отсутствуют, выводится сообщение
- * о неверных аргументах.
- *
- * В остальных случаях команда и её аргументы выводятся в консоль.
- *
- * @param cmd имя выполняемой команды.
- * @param cmdArgs список аргументов, переданных команде.
+ * @param command имя команды.
+ * @param args аргументы команды.
+ * @return результат выполнения команды.
  */
 fun executeCommand(
-    cmd: String,
-    cmdArgs: List<String>,
-) {
-    when {
-        cmd !in COMMAND_LIST -> print("неизвестная команда")
-        cmdArgs.isEmpty() -> print("неверные аргументы")
-        else -> print("$cmd: $cmdArgs")
+    command: String,
+    args: List<String>,
+): CommandResult =
+    when (command) {
+        "ls" -> {
+            if (args.isEmpty()) {
+                println("неверные аргументы")
+                CommandResult.ERROR
+            } else {
+                println("ls")
+                args.forEach(::println)
+                CommandResult.SUCCESS
+            }
+        }
+
+        "cd" -> {
+            if (args.size == 1) {
+                println("cd: [${args.first()}]")
+                CommandResult.SUCCESS
+            } else {
+                println("неверные аргументы")
+                CommandResult.ERROR
+            }
+        }
+
+        else -> {
+            println("неизвестная команда: $command")
+            CommandResult.ERROR
+        }
     }
 
-    println()
+/**
+ * Разбирает параметры командной строки.
+ *
+ * Поддерживаемые параметры:
+ * `--vfs <path>` — путь к VFS.
+ * `--script <path>` — путь к стартовому скрипту.
+ *
+ * @param args аргументы командной строки.
+ * @return конфигурация эмулятора.
+ * @throws IllegalArgumentException если параметр неизвестен
+ * или отсутствует его значение.
+ */
+fun parseCommandLineArguments(args: Array<String>): AppConfig {
+    var vfsPath: String? = null
+    var scriptPath: String? = null
+
+    var index = 0
+
+    while (index < args.size) {
+        when (args[index]) {
+            VFS_ARGUMENT -> {
+                if (index + 1 >= args.size) {
+                    throw IllegalArgumentException(
+                        "для параметра $VFS_ARGUMENT не указано значение",
+                    )
+                }
+
+                vfsPath = args[index + 1]
+                index += 2
+            }
+
+            SCRIPT_ARGUMENT -> {
+                if (index + 1 >= args.size) {
+                    throw IllegalArgumentException(
+                        "для параметра $SCRIPT_ARGUMENT не указано значение",
+                    )
+                }
+
+                scriptPath = args[index + 1]
+                index += 2
+            }
+
+            else -> {
+                throw IllegalArgumentException(
+                    "неизвестный параметр: ${args[index]}",
+                )
+            }
+        }
+    }
+
+    return AppConfig(
+        vfsPath = vfsPath,
+        scriptPath = scriptPath,
+    )
+}
+
+/**
+ * Выполняет одну строку пользовательского ввода.
+ *
+ * @param input строка, введённая пользователем.
+ * @return результат выполнения команды.
+ */
+fun executeInput(input: String): CommandResult {
+    val parseInput = parseUserInput(input)
+
+    if (parseInput.isEmpty()) {
+        return CommandResult.SUCCESS
+    }
+
+    val command = parseInput.first()
+    val args = parseInput.subList(1, parseInput.size)
+
+    if (command == "exit") {
+        if (args.isEmpty()) {
+            println("Завершение работы терминала")
+            return CommandResult.EXIT
+        }
+
+        println("неверные аргументы")
+        return CommandResult.ERROR
+    }
+
+    return executeCommand(command, args)
+}
+
+/**
+ * Выполняет команды из стартового скрипта.
+ *
+ * Пустые строки и строки, начинающиеся с `//`, игнорируются.
+ * Перед каждой командой выводится приглашение терминала.
+ *
+ * @param scriptPath путь к стартовому скрипту.
+ * @return `true`, если скрипт выполнен без ошибок.
+ */
+fun executeStartupScript(scriptPath: String): Boolean {
+    var hasErrors = false
+
+    java.io.File(scriptPath).useLines { lines ->
+        for (line in lines) {
+            val input = line.trim()
+
+            if (input.isEmpty() || input.startsWith("//")) {
+                continue
+            }
+
+            println("${getWelcomeMessage()}$input")
+
+            when (executeInput(input)) {
+                CommandResult.SUCCESS -> Unit
+
+                CommandResult.ERROR -> {
+                    println("Ошибка выполнения стартового скрипта: $input")
+                    hasErrors = true
+                }
+
+                CommandResult.EXIT -> {
+                    return@useLines
+                }
+            }
+        }
+    }
+
+    return !hasErrors
+}
+
+/**
+ * Запускает эмулятор терминала.
+ *
+ * @param args параметры командной строки.
+ */
+fun main(args: Array<String>) {
+    val config = parseCommandLineArguments(args)
+
+    println("Конфигурация эмулятора:")
+    println("vfs=${config.vfsPath ?: "не задан"}")
+    println("script=${config.scriptPath ?: "не задан"}")
+
+    if (config.scriptPath != null) {
+        val scriptSucceeded = executeStartupScript(config.scriptPath)
+
+        if (!scriptSucceeded) {
+            println("Стартовый скрипт завершён с ошибками.")
+        }
+    }
+
+    while (true) {
+        print(getWelcomeMessage())
+
+        val input = readlnOrNull() ?: break
+
+        if (executeInput(input) == CommandResult.EXIT) {
+            break
+        }
+    }
 }

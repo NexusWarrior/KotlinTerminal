@@ -2,4 +2,10 @@
 
 set -e
 
-./gradlew --console=plain -q run
+cd "$(dirname "$0")"
+
+if [ "$#" -eq 0 ]; then
+    ./gradlew --console=plain run
+else
+    ./gradlew --console=plain run --args="$*"
+fi
